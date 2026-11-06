@@ -1,8 +1,3 @@
--- =====================================================
--- Skema & Data Awal Database MySQL untuk MathVenture
--- Otomatis dijalankan oleh db.js saat server menyala,
--- atau bisa di-import manual lewat phpMyAdmin / MySQL CLI.
--- =====================================================
 
 CREATE DATABASE IF NOT EXISTS `mathventure`
   CHARACTER SET utf8mb4
