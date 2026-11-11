@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- Seed Default Admin (Password: Admin@123456)
 INSERT IGNORE INTO `admins` (`id`, `email`, `password_hash`, `name`) VALUES
-(1, 'adminmathventure@gmail.com', '60b8ab1da3f890f35dfade3341bc66d5e039de9d3e8f605d5f4741a2b1de51ef', 'Admin MathVenture');
+(1, 'adminmathventure@gmail.com', 'ad89b64d66caa8e30e5d5ce4a9763f4ecc205814c412175f3e2c50027471426d', 'Admin MathVenture');
 
 -- Seed Data Awal Materi
 INSERT IGNORE INTO `materi` (`id`, `judul`, `deskripsi`) VALUES
