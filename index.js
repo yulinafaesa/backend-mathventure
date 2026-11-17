@@ -4,9 +4,18 @@ const { pool, dbConfig, initDb, hashPassword } = require("./db");
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
 
-// Middleware CORS agar dapat diakses oleh Next.js (mathventure-admin) maupun Flutter (mathventure-mobile)
+// CORS: hanya domain yang terdaftar yang boleh akses dari browser
+const allowedOrigins = [
+  "https://mathventure-admin.vercel.app", // ganti kalau domain Vercel kamu beda
+  "http://localhost:3000",
+];
+
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") {
