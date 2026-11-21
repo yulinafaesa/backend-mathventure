@@ -1,30 +1,23 @@
 const express = require("express");
-const { pool, dbConfig, initDb, hashPassword } = require("./db");
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const { pool, dbConfig, initDb, verifyPassword } = require("./db");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
+const JWT_SECRET = process.env.JWT_SECRET || process.env.AUTH_SECRET || "mathventure-jwt-secret";
 
-// CORS: hanya domain yang terdaftar yang boleh akses dari browser
-const allowedOrigins = [
-  "https://mathventure-admin.vercel.app", // ganti kalau domain Vercel kamu beda
-  "http://localhost:3000",
-];
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
-  }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
+// Middleware CORS dan JSON sesuai modul panduan
+app.use(cors());
 app.use(express.json());
+
+// Endpoint utama sesuai Modul Tahap 6 - Langkah 4
+app.get("/", (_req, res) => {
+  res.json({
+    status: "success",
+    message: "Backend Aplikasi MathVenture Berjalan",
+  });
+});
 
 // Pastikan MySQL sudah diinisialisasi sebelum memproses request API
 app.use("/api", async (req, res, next) => {
@@ -91,6 +84,7 @@ app.get("/api/health", async (_req, res) => {
     await initDb();
     res.json({
       ok: true,
+      status: "success",
       service: "mathventure-backend",
       database: "mysql",
       dbName: dbConfig.database,
@@ -99,6 +93,7 @@ app.get("/api/health", async (_req, res) => {
   } catch (err) {
     res.status(503).json({
       ok: false,
+      status: "error",
       service: "mathventure-backend",
       database: "mysql",
       error: err.message,
@@ -121,7 +116,7 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 // ==========================================
-// 2. AUTHENTICATION (Admin & Student)
+// 2. AUTHENTICATION (Admin & Student) + JWT
 // ==========================================
 app.post("/api/auth/login", async (req, res) => {
   const email = String(req.body?.email ?? "").trim().toLowerCase();
@@ -137,12 +132,19 @@ app.post("/api/auth/login", async (req, res) => {
   );
   const admin = rows[0];
 
-  if (!admin || admin.password_hash !== hashPassword(password)) {
+  if (!admin || !verifyPassword(password, admin.password_hash)) {
     return res.status(401).json({ ok: false, message: "Email atau password salah." });
   }
 
+  const token = jwt.sign(
+    { id: admin.id, email: admin.email, role: "admin" },
+    JWT_SECRET,
+    { expiresIn: "8h" }
+  );
+
   return res.json({
     ok: true,
+    token,
     admin: {
       id: admin.id,
       email: admin.email,
@@ -151,7 +153,7 @@ app.post("/api/auth/login", async (req, res) => {
   });
 });
 
-// Endpoint login siswa (disiapkan untuk integrasi Flutter mathventure-mobile)
+// Endpoint login siswa (terhubung dengan Flutter mathventure-mobile & Kelola User di Admin)
 app.post("/api/auth/student-login", async (req, res) => {
   const nama = String(req.body?.nama ?? "").trim();
   const kelas = String(req.body?.kelas ?? "").trim();
@@ -174,8 +176,15 @@ app.post("/api/auth/student-login", async (req, res) => {
     });
   }
 
+  const token = jwt.sign(
+    { id: user.id, nama: user.nama, role: "student" },
+    JWT_SECRET,
+    { expiresIn: "24h" }
+  );
+
   return res.json({
     ok: true,
+    token,
     user: {
       ...user,
       inputKelas: kelas || user.kelas,
@@ -507,7 +516,7 @@ app.use((err, _req, res, _next) => {
   return res.status(500).json({ ok: false, message: "Terjadi kesalahan pada server backend." });
 });
 
-if (require.main === module) {
+function startServer() {
   initDb()
     .then(() => {
       console.log(`Terhubung ke MySQL (${dbConfig.host}:${dbConfig.port}/${dbConfig.database})`);
@@ -516,10 +525,16 @@ if (require.main === module) {
       console.warn(`Peringatan: MySQL belum siap (${err.message}). Server akan mencoba lagi saat ada request.`);
     })
     .finally(() => {
-      app.listen(PORT, () => {
-        console.log(`MathVenture Backend berjalan di http://localhost:${PORT}`);
+      // Listen di 0.0.0.0 sesuai Modul Tahap 6 - Langkah 4 & Bagian 8 (agar dapat diakses dari Emulator & HP Fisik)
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server berjalan di port ${PORT} (http://localhost:${PORT})`);
       });
     });
 }
 
+if (require.main === module) {
+  startServer();
+}
+
 module.exports = app;
+module.exports.startServer = startServer;

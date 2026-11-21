@@ -1,17 +1,10 @@
-const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const dotenv = require("dotenv");
+const bcrypt = require("bcryptjs");
 const mysql = require("mysql2/promise");
 
-// Muat file .env jika tersedia (Node 20.6+)
-const envPath = path.join(__dirname, ".env");
-if (fs.existsSync(envPath) && typeof process.loadEnvFile === "function") {
-  try {
-    process.loadEnvFile(envPath);
-  } catch {
-    // Abaikan jika gagal memuat .env
-  }
-}
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const dbConfig = {
   host: process.env.DB_HOST || "127.0.0.1",
@@ -34,7 +27,16 @@ const pool = mysql.createPool({
 });
 
 function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
+  return bcrypt.hashSync(password, 10);
+}
+
+function verifyPassword(password, storedHash) {
+  if (!storedHash) return false;
+  if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$") || storedHash.startsWith("$2y$")) {
+    return bcrypt.compareSync(password, storedHash);
+  }
+  const sha256Hex = crypto.createHash("sha256").update(password).digest("hex");
+  return storedHash === sha256Hex;
 }
 
 let isInitialized = false;
@@ -190,4 +192,5 @@ module.exports = {
   dbConfig,
   initDb,
   hashPassword,
+  verifyPassword,
 };
