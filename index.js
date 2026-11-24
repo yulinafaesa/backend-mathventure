@@ -503,6 +503,188 @@ app.delete("/api/users/:id", async (req, res) => {
   res.json({ ok: true, id });
 });
 
+
+// ==========================================
+// 6. CRUD GAMES
+// ==========================================
+
+// GET: Mengambil semua data games
+app.get("/api/games", async (_req, res) => {
+  const [rows] = await pool.query(`
+    SELECT
+      id,
+      nama,
+      deskripsi,
+      kategori,
+      gambar,
+      status,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM games
+    ORDER BY id DESC
+  `);
+
+  res.json(rows);
+});
+
+// GET: Mengambil satu game berdasarkan ID
+app.get("/api/games/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: "ID game tidak valid." });
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT
+      id,
+      nama,
+      deskripsi,
+      kategori,
+      gambar,
+      status,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM games
+    WHERE id = ?
+    LIMIT 1`,
+    [id]
+  );
+
+  if (rows.length === 0) {
+    return res.status(404).json({ message: "Game tidak ditemukan." });
+  }
+
+  res.json(rows[0]);
+});
+
+// POST: Menambahkan game baru
+app.post("/api/games", async (req, res) => {
+  const nama = String(req.body?.nama ?? "").trim();
+  const deskripsi = String(req.body?.deskripsi ?? "").trim();
+  const kategori = String(req.body?.kategori ?? "").trim();
+  const gambar = String(req.body?.gambar ?? "").trim() || null;
+  const status = String(req.body?.status ?? "aktif").trim().toLowerCase();
+
+  if (!nama || !deskripsi || !kategori) {
+    return res.status(400).json({
+      message: "Nama, deskripsi, dan kategori game wajib diisi."
+    });
+  }
+
+  if (!["aktif", "nonaktif"].includes(status)) {
+    return res.status(400).json({
+      message: "Status game harus aktif atau nonaktif."
+    });
+  }
+
+  const [result] = await pool.execute(
+    `INSERT INTO games (nama, deskripsi, kategori, gambar, status)
+     VALUES (?, ?, ?, ?, ?)`,
+    [nama, deskripsi, kategori, gambar, status]
+  );
+
+  const [rows] = await pool.execute(
+    `SELECT
+      id,
+      nama,
+      deskripsi,
+      kategori,
+      gambar,
+      status,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM games
+    WHERE id = ?
+    LIMIT 1`,
+    [result.insertId]
+  );
+
+  res.status(201).json(rows[0]);
+});
+
+// PUT: Mengubah data game
+app.put("/api/games/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const nama = String(req.body?.nama ?? "").trim();
+  const deskripsi = String(req.body?.deskripsi ?? "").trim();
+  const kategori = String(req.body?.kategori ?? "").trim();
+  const gambar = String(req.body?.gambar ?? "").trim() || null;
+  const status = String(req.body?.status ?? "").trim().toLowerCase();
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: "ID game tidak valid." });
+  }
+
+  if (!nama || !deskripsi || !kategori) {
+    return res.status(400).json({
+      message: "Nama, deskripsi, dan kategori game wajib diisi."
+    });
+  }
+
+  if (!["aktif", "nonaktif"].includes(status)) {
+    return res.status(400).json({
+      message: "Status game harus aktif atau nonaktif."
+    });
+  }
+
+  const [existingRows] = await pool.execute(
+    "SELECT id FROM games WHERE id = ? LIMIT 1",
+    [id]
+  );
+
+  if (existingRows.length === 0) {
+    return res.status(404).json({ message: "Game tidak ditemukan." });
+  }
+
+  await pool.execute(
+    `UPDATE games
+     SET nama = ?, deskripsi = ?, kategori = ?, gambar = ?, status = ?
+     WHERE id = ?`,
+    [nama, deskripsi, kategori, gambar, status, id]
+  );
+
+  const [rows] = await pool.execute(
+    `SELECT
+      id,
+      nama,
+      deskripsi,
+      kategori,
+      gambar,
+      status,
+      created_at AS createdAt,
+      updated_at AS updatedAt
+    FROM games
+    WHERE id = ?
+    LIMIT 1`,
+    [id]
+  );
+
+  res.json(rows[0]);
+});
+
+// DELETE: Menghapus game
+app.delete("/api/games/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: "ID game tidak valid." });
+  }
+
+  const [existingRows] = await pool.execute(
+    "SELECT id FROM games WHERE id = ? LIMIT 1",
+    [id]
+  );
+
+  if (existingRows.length === 0) {
+    return res.status(404).json({ message: "Game tidak ditemukan." });
+  }
+
+  await pool.execute("DELETE FROM games WHERE id = ?", [id]);
+
+  res.json({ ok: true, id });
+});
+
 // Fallback 404 & Error Handler JSON
 app.use("/api", (_req, res) => {
   res.status(404).json({ ok: false, message: "Endpoint API tidak ditemukan." });

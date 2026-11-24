@@ -42,6 +42,17 @@ CREATE TABLE IF NOT EXISTS `users` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `games` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `nama` VARCHAR(255) NOT NULL,
+  `deskripsi` TEXT NOT NULL,
+  `kategori` VARCHAR(100) NOT NULL,
+  `gambar` VARCHAR(500) DEFAULT NULL,
+  `status` ENUM('aktif', 'nonaktif') NOT NULL DEFAULT 'aktif',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Seed Default Admin (Password: Admin@123456)
 INSERT IGNORE INTO `admins` (`id`, `email`, `password_hash`, `name`) VALUES
 (1, 'adminmathventure@gmail.com', '60b8ab1da3f890f35dfade3341bc66d5e039de9d3e8f605d5f4741a2b1de51ef', 'Admin MathVenture');
